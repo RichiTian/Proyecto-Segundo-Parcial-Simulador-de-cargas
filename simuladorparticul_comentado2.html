@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚡ Simulador de Cargas Eléctricas</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #060810;
+  --bg2: #0d1120;
+  --bg3: #111827;
+  --panel: #0f1522;
+  --border: rgba(55,140,255,.18);
+  --border2: rgba(55,140,255,.32);
+  --blue: #378CFF;
+  --blue2: #185FA5;
+  --red: #FF4B4B;
+  --red2: #A32D2D;
+  --green: #39D98A;
+  --amber: #FAC02E;
+  --pink: #ED6EAC;
+  --teal: #22D4C8;
+  --text: #E8EDF5;
+  --muted: #6B7A99;
+  --dim: #3A4560;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overflow:hidden}
+
+/* SCAN LINES EFFECT */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);
+}
+
+#app{display:flex;flex-direction:column;height:100vh}
+
+/* TOP BAR */
+#topbar{
+  display:flex;align-items:center;gap:12px;padding:10px 20px;
+  background:var(--panel);border-bottom:1px solid var(--border);
+  flex-shrink:0;flex-wrap:wrap;
+}
+#logo{font-family:'Orbitron',monospace;font-weight:900;font-size:16px;letter-spacing:.08em;
+  background:linear-gradient(135deg,var(--blue),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;margin-right:8px;white-space:nowrap}
+.topbar-divider{width:1px;height:24px;background:var(--border);flex-shrink:0}
+.mode-group{display:flex;gap:3px;background:rgba(0,0,0,.4);border-radius:8px;padding:3px;border:1px solid var(--border)}
+.mode-btn{padding:5px 14px;font-family:'Orbitron',monospace;font-size:11px;font-weight:700;letter-spacing:.05em;
+  border:none;background:transparent;color:var(--muted);cursor:pointer;border-radius:6px;transition:all .2s}
+.mode-btn.active{background:var(--blue2);color:var(--blue);box-shadow:0 0 16px rgba(55,140,255,.3)}
+.tbtn{padding:6px 14px;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;
+  border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;transition:all .2s;white-space:nowrap}
+.tbtn:hover{border-color:var(--border2);color:var(--text);background:rgba(55,140,255,.06)}
+.tbtn.on{border-color:var(--teal);color:var(--teal);background:rgba(34,212,200,.08)}
+.tbtn-add{border-color:var(--green);color:var(--green)}
+.tbtn-add:hover{background:rgba(57,217,138,.08);border-color:var(--green)}
+.tbtn-reset{border-color:var(--red);color:var(--red)}
+.tbtn-reset:hover{background:rgba(255,75,75,.08)}
+#topbar-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+
+/* MAIN LAYOUT */
+#main{display:flex;flex:1;overflow:hidden}
+
+/* SIDEBAR */
+#sidebar{
+  width:280px;min-width:240px;background:var(--panel);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;flex-shrink:0
+}
+.tab-strip{display:flex;border-bottom:1px solid var(--border)}
+.tab{flex:1;padding:9px 4px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  font-family:'Space Mono',monospace;border:none;background:transparent;color:var(--muted);cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .2s}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue);background:rgba(55,140,255,.05)}
+#sidebar-content{flex:1;overflow-y:auto;padding:12px}
+#sidebar-content::-webkit-scrollbar{width:4px}
+#sidebar-content::-webkit-scrollbar-track{background:transparent}
+#sidebar-content::-webkit-scrollbar-thumb{background:var(--dim);border-radius:2px}
+
+.sec-label{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);margin:12px 0 6px;padding-left:2px}
+.sec-label:first-child{margin-top:0}
+
+/* CHARGE CARDS */
+.charge-card{
+  background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:10px;
+  padding:10px;margin-bottom:6px;cursor:pointer;transition:all .2s;position:relative
+}
+.charge-card:hover{border-color:var(--border2);background:rgba(55,140,255,.04)}
+.charge-card.selected{border-color:var(--blue);background:rgba(55,140,255,.08);box-shadow:0 0 20px rgba(55,140,255,.12)}
+.charge-card.selected::before{
+  content:'';position:absolute;left:-1px;top:10px;bottom:10px;width:3px;
+  background:var(--blue);border-radius:0 2px 2px 0
+}
+.ch-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.ch-badge{
+  width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-family:'Orbitron',monospace;font-weight:900;font-size:12px;flex-shrink:0
+}
+.ch-badge.pos{background:rgba(55,140,255,.2);color:var(--blue);border:1px solid rgba(55,140,255,.4)}
+.ch-badge.neg{background:rgba(255,75,75,.2);color:var(--red);border:1px solid rgba(255,75,75,.4)}
+.ch-label{font-family:'Orbitron',monospace;font-size:12px;font-weight:700;color:var(--text);flex:1}
+.ch-q-val{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted)}
+.del-btn{background:none;border:none;color:var(--dim);cursor:pointer;font-size:16px;line-height:1;
+  padding:2px 4px;border-radius:4px;transition:all .2s}
+.del-btn:hover{color:var(--red);background:rgba(255,75,75,.1)}
+
+.field-row{display:flex;gap:6px;align-items:center;margin-bottom:5px}
+.field-row label{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);min-width:22px;text-align:right}
+.field-row input[type=number]{
+  flex:1;background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);font-family:'Space Mono',monospace;font-size:11px;padding:4px 8px;
+  outline:none;transition:border-color .2s;width:100%
+}
+.field-row input[type=number]:focus{border-color:var(--blue)}
+.field-row .unit{font-family:'Space Mono',monospace;font-size:9px;color:var(--dim);min-width:20px}
+input[type=range]{-webkit-appearance:none;width:100%;height:3px;background:var(--border);border-radius:2px;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--blue);cursor:pointer;box-shadow:0 0 8px rgba(55,140,255,.5)}
+
+/* RESULTS */
+.result-card{
+  background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px
+}
+.result-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.result-row:last-child{border:none}
+.rl{font-size:11px;color:var(--muted)}
+.rv{font-family:'Space Mono',monospace;font-size:10px;color:var(--text);text-align:right;max-width:160px;word-break:break-all}
+.rv.pos{color:var(--blue)}
+.rv.neg{color:var(--red)}
+.rv.net{color:var(--green);font-weight:700}
+.rv.field{color:var(--pink)}
+
+.warn{font-family:'Space Mono',monospace;font-size:10px;color:var(--amber);background:rgba(250,192,46,.08);
+  border:1px solid rgba(250,192,46,.2);border-radius:6px;padding:6px 8px;margin-bottom:4px}
+.empty-hint{font-family:'Space Mono',monospace;font-size:10px;color:var(--dim);text-align:center;padding:20px 0}
+
+/* E FIELD POINTS */
+.ep-row{display:flex;gap:6px;align-items:center;margin-bottom:4px}
+.ep-dot{width:9px;height:9px;border-radius:50%;background:var(--pink);border:1px solid rgba(237,110,172,.5);flex-shrink:0}
+.ep-row input{flex:1;background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);font-family:'Space Mono',monospace;font-size:11px;padding:4px 6px;outline:none;min-width:0}
+.ep-row input:focus{border-color:var(--pink)}
+.ep-del{background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px;padding:2px;transition:color .2s}
+.ep-del:hover{color:var(--red)}
+
+/* CANVAS */
+#canvas-wrap{flex:1;position:relative;background:var(--bg);overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+#hint-bar{
+  position:absolute;bottom:0;left:0;right:0;background:rgba(6,8,16,.85);
+  border-top:1px solid var(--border);padding:5px 16px;
+  font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.04em;
+  display:flex;gap:20px;flex-wrap:wrap
+}
+.hint-item{display:flex;align-items:center;gap:5px}
+.hint-key{background:rgba(55,140,255,.15);border:1px solid var(--border2);border-radius:4px;
+  padding:1px 5px;font-size:9px;color:var(--blue)}
+
+/* TOOLTIP */
+#tooltip{
+  position:absolute;background:rgba(13,17,32,.95);border:1px solid var(--border2);
+  border-radius:8px;padding:8px 12px;font-family:'Space Mono',monospace;font-size:10px;
+  color:var(--text);pointer-events:none;z-index:100;display:none;white-space:nowrap;
+  box-shadow:0 4px 20px rgba(0,0,0,.5)
+}
+#tooltip .tt-name{font-size:12px;font-weight:700;color:var(--blue);margin-bottom:4px;font-family:'Orbitron',monospace}
+#tooltip .tt-row{display:flex;gap:8px;justify-content:space-between}
+#tooltip .tt-row span{color:var(--muted)}
+#tooltip .tt-row strong{color:var(--text)}
+
+/* COORD DISPLAY */
+#coord-display{
+  position:absolute;top:10px;right:10px;background:rgba(13,17,32,.8);
+  border:1px solid var(--border);border-radius:8px;padding:6px 12px;
+  font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);pointer-events:none
+}
+
+/* ADD CHARGE BTN */
+.sidebar-add-btn{
+  width:100%;padding:8px;background:rgba(57,217,138,.06);border:1px dashed rgba(57,217,138,.3);
+  border-radius:8px;color:var(--green);font-family:'Space Mono',monospace;font-size:11px;
+  cursor:pointer;transition:all .2s;margin-top:4px
+}
+.sidebar-add-btn:hover{background:rgba(57,217,138,.12);border-color:var(--green)}
+
+/* LEGEND */
+#legend{
+  position:absolute;top:10px;left:10px;background:rgba(13,17,32,.85);
+  border:1px solid var(--border);border-radius:8px;padding:8px 12px;
+  font-family:'Space Mono',monospace;font-size:9px
+}
+.leg-row{display:flex;align-items:center;gap:6px;padding:2px 0;color:var(--muted)}
+.leg-dot{width:10px;height:10px;border-radius:50%}
+
+/* FORCE VECTOR HIGHLIGHT */
+.force-anim{animation:pulseFV 1.5s infinite}
+@keyframes pulseFV{0%,100%{opacity:.8}50%{opacity:1}}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--dim);border-radius:3px}
+
+select{
+  background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);font-family:'Space Mono',monospace;font-size:11px;padding:5px 8px;
+  outline:none;width:100%;cursor:pointer
+}
+select:focus{border-color:var(--blue)}
+option{background:var(--bg2)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <div id="logo">⚡ COULOMB SIM</div>
+    <div class="topbar-divider"></div>
+    <div class="mode-group">
+      <button class="mode-btn active" id="btn1d" onclick="setDim(1)">1D</button>
+      <button class="mode-btn" id="btn2d" onclick="setDim(2)">2D</button>
+    </div>
+    <div class="topbar-divider"></div>
+    <button class="tbtn tbtn-add" onclick="addCharge()">+ CARGA</button>
+    <button class="tbtn on" id="btnField" onclick="toggleField()">Campo E ▸</button>
+    <button class="tbtn on" id="btnLines" onclick="toggleLines()">Líneas ▸</button>
+    <button class="tbtn on" id="btnPart" onclick="toggleParticles()">Partículas ▸</button>
+    <div id="topbar-right">
+      <button class="tbtn tbtn-reset" onclick="resetAll()">↺ RESET</button>
+    </div>
+  </div>
+  <div id="main">
+    <div id="sidebar">
+      <div class="tab-strip">
+        <button class="tab active" onclick="showTab('charges')">CARGAS</button>
+        <button class="tab" onclick="showTab('results')">FUERZAS</button>
+        <button class="tab" onclick="showTab('campo')">CAMPO E</button>
+      </div>
+      <div id="sidebar-content">
+        <!-- injected by JS -->
+      </div>
+    </div>
+    <div id="canvas-wrap">
+      <canvas id="cv"></canvas>
+      <div id="coord-display">x: 0 | y: 0</div>
+      <div id="legend">
+        <div class="leg-row"><div class="leg-dot" style="background:#378CFF;border:1px solid #185FA5"></div> Carga +</div>
+        <div class="leg-row"><div class="leg-dot" style="background:#FF4B4B;border:1px solid #A32D2D"></div> Carga −</div>
+        <div class="leg-row"><div class="leg-dot" style="background:#FAC02E;width:24px;height:3px;border-radius:2px"></div> Fuerza ind.</div>
+        <div class="leg-row"><div class="leg-dot" style="background:#39D98A;width:24px;height:3px;border-radius:2px"></div> F. neta</div>
+        <div class="leg-row"><div class="leg-dot" style="background:#22D4C8;width:24px;height:3px;border-radius:2px"></div> Campo E</div>
+        <div class="leg-row"><div class="leg-dot" style="background:#ED6EAC"></div> Punto E</div>
+      </div>
+      <div id="hint-bar">
+        <div class="hint-item"><span class="hint-key">DRAG</span> mover carga</div>
+        <div class="hint-item"><span class="hint-key">DBL CLICK</span> nueva carga</div>
+        <div class="hint-item"><span class="hint-key">CLICK</span> seleccionar</div>
+        <div class="hint-item"><span class="hint-key">SCROLL</span> zoom</div>
+      </div>
+      <div id="tooltip">
+        <div class="tt-name" id="tt-name"></div>
+        <div class="tt-row"><span>Carga</span><strong id="tt-q"></strong></div>
+        <div class="tt-row"><span>Pos.</span><strong id="tt-pos"></strong></div>
+        <div class="tt-row"><span>|F neta|</span><strong id="tt-f"></strong></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const K = 8.99e9;    // Constante de Coulomb (N·m²/C²)
+const SCALE0 = 1.8;  // Escala inicial: píxeles por unidad de mundo
+let dim = 2;         // Dimensión activa: 1 = solo eje X, 2 = plano XY
+let scale = SCALE0;  // Zoom actual
+let panX = 0, panY = 0; // Desplazamiento del viewport (paneo)
+let showField = true, showLines = true, showParticles = true; // Capas visibles
+let selectedIdx = -1;   // Índice de la carga seleccionada (-1 = ninguna)
+let currentTab = 'charges';
+let dragging = null, dragOffX = 0, dragOffY = 0; // Estado del arrastre con mouse
+let animT = 0;       // Contador de frames para efectos animados
+let particles = [];  // Partículas del efecto visual al mover/crear cargas
+let idCounter = 3;   // ID único para nuevas cargas (arranca en 3 porque ya hay 3)
+
+// Cargas iniciales: cada una tiene id, valor q (en Coulombs), posición x,y y etiqueta
+let charges = [
+  {id:0, q:2e-6,  x:0,   y:0,   label:'q₁'},
+  {id:1, q:-3e-6, x:200, y:80,  label:'q₂'},
+  {id:2, q:1.5e-6,x:-150,y:120, label:'q₃'},
+];
+// Puntos donde se evalúa y visualiza el campo eléctrico resultante
+let ePoints = [
+  {x:100,y:0},{x:0,y:150},{x:-100,y:50}
+];
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const wrap = document.getElementById('canvas-wrap');
+
+// ── SUBSCRIPT ─────────────────────────────
+const SUBS = {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉'};
+function subscript(n){return String(n).split('').map(c=>SUBS[c]||c).join('');}
+
+// ── FORMAT ────────────────────────────────
+function fmtQ(q){
+  let v=q*1e6;
+  return (v>=0?'+':'')+v.toFixed(2)+'μC';
+}
+function fmtF(f){
+  let a=Math.abs(f);
+  let s=f>=0?'':'-';
+  if(a>=1e9)return s+(a/1e9).toFixed(3)+' GN';
+  if(a>=1e6)return s+(a/1e6).toFixed(3)+' MN';
+  if(a>=1e3)return s+(a/1e3).toFixed(3)+' kN';
+  return s+a.toFixed(4)+' N';
+}
+function fmtFabs(f){
+  let a=Math.abs(f);
+  if(a>=1e9)return (a/1e9).toFixed(3)+' GN';
+  if(a>=1e6)return (a/1e6).toFixed(3)+' MN';
+  if(a>=1e3)return (a/1e3).toFixed(3)+' kN';
+  return a.toFixed(4)+' N';
+}
+function fmtE(e){
+  let a=Math.abs(e);
+  let s=e>=0?'':'-';
+  if(a>=1e9)return s+(a/1e9).toFixed(3)+' GN/C';
+  if(a>=1e6)return s+(a/1e6).toFixed(3)+' MN/C';
+  if(a>=1e3)return s+(a/1e3).toFixed(3)+' kN/C';
+  return s+a.toFixed(3)+' N/C';
+}
+function fmtEabs(e){
+  let a=Math.abs(e);
+  if(a>=1e9)return (a/1e9).toFixed(3)+' GN/C';
+  if(a>=1e6)return (a/1e6).toFixed(3)+' MN/C';
+  if(a>=1e3)return (a/1e3).toFixed(3)+' kN/C';
+  return a.toFixed(3)+' N/C';
+}
+
+// ── COLORS ────────────────────────────────
+function qColor(q){return q>=0?'#378CFF':'#FF4B4B';}
+function qGlow(q){return q>=0?'rgba(55,140,255,.6)':'rgba(255,75,75,.6)';}
+
+// ── COORD TRANSFORMS ─────────────────────
+// Convierte coordenadas del mundo físico → píxeles del canvas.
+// El eje Y del canvas está invertido respecto al eje Y matemático.
+function toCanvas(wx,wy){
+  let w=cv.width, h=cv.height;
+  return {cx: w/2 + panX + wx*scale, cy: h/2 + panY - wy*scale};
+}
+// Convierte píxeles del canvas → coordenadas del mundo físico (inversa de toCanvas)
+function fromCanvas(cx,cy){
+  let w=cv.width, h=cv.height;
+  return {x:(cx - w/2 - panX)/scale, y:-(cy - h/2 - panY)/scale};
+}
+
+// ── PHYSICS ───────────────────────────────
+// Calcula la fuerza de Coulomb que cada carga ejerce sobre las demás.
+// Retorna un objeto indexado por carga con fuerzas individuales y fuerza neta.
+function computePhysics(){
+  let res = {};
+  for(let i=0;i<charges.length;i++){
+    let fi = {forces:[], fx:0, fy:0};
+    for(let j=0;j<charges.length;j++){
+      if(i===j) continue;
+      let dx = charges[i].x - charges[j].x;
+      let dy = charges[i].y - charges[j].y;
+      let r = Math.sqrt(dx*dx + dy*dy);
+      if(r < 0.01) continue; // Evita división por cero si dos cargas se solapan
+      // 100 unidades de mundo = 1 metro
+      let rM = r / 100;
+      // Ley de Coulomb: F = K * |q1*q2| / r²
+      let F = K * Math.abs(charges[i].q * charges[j].q) / (rM*rM);
+      // Signo: +1 = repulsión (igual signo), -1 = atracción (signo opuesto)
+      let sign = (charges[i].q * charges[j].q > 0) ? 1 : -1;
+      let fx = sign * F * (dx/r); // Componente X (vector unitario × magnitud × signo)
+      let fy = sign * F * (dy/r);
+      if(dim===1){fy=0;} // En 1D se ignora la componente Y
+      fi.forces.push({j, F, fx, fy, rM});
+      fi.fx += fx; fi.fy += fy;
+    }
+    fi.Fnet = Math.sqrt(fi.fx*fi.fx + fi.fy*fi.fy); // Módulo de la fuerza neta
+    fi.angle = Math.atan2(fi.fy, fi.fx)*180/Math.PI; // Ángulo en grados
+    res[i] = fi;
+  }
+  return res;
+}
+
+// Calcula el campo eléctrico resultante en el punto (px, py)
+// por superposición de los campos de todas las cargas. E = k*|q|/r²
+function electricField(px,py){
+  let ex=0, ey=0;
+  for(let c of charges){
+    let dx=px-c.x, dy=py-c.y;
+    let r=Math.sqrt(dx*dx+dy*dy);
+    if(r<2) continue; // Punto demasiado cerca de la carga → campo no definido
+    let rM=r/100;
+    let E = K*Math.abs(c.q)/(rM*rM);
+    let sign = c.q>0 ? 1 : -1; // Cargas + emiten campo, cargas − lo absorben
+    ex += sign*E*(dx/r);
+    ey += sign*E*(dy/r);
+  }
+  if(dim===1) ey=0;
+  return {ex, ey, E:Math.sqrt(ex*ex+ey*ey)};
+}
+
+// ── PARTICLES ─────────────────────────────
+function spawnParticles(cx,cy,col,n=12){
+  if(!showParticles) return;
+  for(let i=0;i<n;i++){
+    let a=Math.random()*Math.PI*2;
+    let s=0.5+Math.random()*4;
+    particles.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,col,r:1+Math.random()*3});
+  }
+}
+
+// ── DRAW ARROW ────────────────────────────
+function arrow(x1,y1,x2,y2,col,lw,hs){
+  let dx=x2-x1, dy=y2-y1, len=Math.sqrt(dx*dx+dy*dy);
+  if(len<2) return;
+  let a=Math.atan2(dy,dx);
+  ctx.save();
+  ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=lw||1.5;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  let h=hs||10;
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-h*Math.cos(a-0.4), y2-h*Math.sin(a-0.4));
+  ctx.lineTo(x2-h*Math.cos(a+0.4), y2-h*Math.sin(a+0.4));
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+// ── MAIN DRAW LOOP ────────────────────────
+function draw(){
+  let W=cv.width, H=cv.height;
+  ctx.clearRect(0,0,W,H);
+
+  // Background
+  ctx.fillStyle='#060810';
+  ctx.fillRect(0,0,W,H);
+
+  // Subtle radial vignette
+  let vig=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*.7);
+  vig.addColorStop(0,'transparent');
+  vig.addColorStop(1,'rgba(0,0,0,.4)');
+  ctx.fillStyle=vig;
+  ctx.fillRect(0,0,W,H);
+
+  ctx.save();
+
+  // Grid
+  let gsize=60*scale/SCALE0;
+  let ox=(W/2+panX)%gsize, oy=(H/2+panY)%gsize;
+  ctx.strokeStyle='rgba(55,140,255,.04)'; ctx.lineWidth=.5;
+  for(let x=ox;x<W;x+=gsize){
+    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();
+  }
+  for(let y=oy;y<H;y+=gsize){
+    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
+  }
+  // Axes
+  let ax=toCanvas(0,0);
+  ctx.strokeStyle='rgba(55,140,255,.2)'; ctx.lineWidth=1;
+  ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(ax.cx,0);ctx.lineTo(ax.cx,H);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,ax.cy);ctx.lineTo(W,ax.cy);ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Axis labels
+  ctx.fillStyle='rgba(55,140,255,.4)'; ctx.font='10px Space Mono,monospace'; ctx.textAlign='center';
+  ctx.fillText('x',W-12,ax.cy-6);
+  ctx.textAlign='left';
+  ctx.fillText('y',ax.cx+6,16);
+
+  let phys = computePhysics();
+
+  // Traza líneas de campo partiendo desde cada carga en 14 direcciones.
+  // Sigue el campo paso a paso (integración numérica) hasta salir del canvas o llegar a otra carga.
+  if(showLines){
+    for(let c of charges){
+      let p=toCanvas(c.x,c.y);
+      let nL=14;
+      for(let k=0;k<nL;k++){
+        let a=(k/nL)*Math.PI*2;
+        let r0=18;
+        let lx=p.cx+Math.cos(a)*r0, ly=p.cy+Math.sin(a)*r0;
+        ctx.beginPath(); ctx.moveTo(lx,ly);
+        let px2=lx, py2=ly;
+        let col = c.q>0 ? 'rgba(55,140,255,.2)':'rgba(255,75,75,.2)';
+        for(let s=0;s<80;s++){
+          let wp=fromCanvas(px2,py2);
+          let {ex,ey}=electricField(wp.x,wp.y);
+          let em=Math.sqrt(ex*ex+ey*ey);
+          if(em<1)break;
+          let step=c.q>0?5:-5;
+          px2+=step*ex/em; py2+=step*ey/em;
+          if(px2<-20||px2>W+20||py2<-20||py2>H+20) break;
+          ctx.lineTo(px2,py2);
+          let hit=charges.some(tc=>{
+            if(tc.id===c.id)return false;
+            let tp=toCanvas(tc.x,tc.y);
+            return Math.hypot(px2-tp.cx,py2-tp.cy)<12;
+          });
+          if(hit) break;
+        }
+        ctx.strokeStyle=col; ctx.lineWidth=0.7; ctx.stroke();
+      }
+    }
+  }
+
+  // Dibuja vectores del campo E en una grilla. La longitud y opacidad
+  // están en escala logarítmica para que sean visibles aunque haya magnitudes muy distintas.
+  if(showField){
+    let gs=55;
+    for(let gx=gs/2;gx<W;gx+=gs){
+      for(let gy=gs/2;gy<H;gy+=gs){
+        let wp=fromCanvas(gx,gy);
+        let {ex,ey,E}=electricField(wp.x,wp.y);
+        if(E<1) continue;
+        let ang=Math.atan2(ey,ex);
+        let logE=Math.log10(E+1);
+        let len=Math.min(logE*3.5,20);
+        let alph=Math.min(logE/6,.5);
+        ctx.globalAlpha=alph;
+        let x1=gx-Math.cos(ang)*len/2, y1=gy+Math.sin(ang)*len/2;
+        let x2=gx+Math.cos(ang)*len,   y2=gy-Math.sin(ang)*len;
+        arrow(x1,y1,x2,y2,'#22D4C8',0.8,5);
+        ctx.globalAlpha=1;
+      }
+    }
+  }
+
+  // Dibuja los vectores de fuerza sobre la carga seleccionada:
+  // amarillo = fuerza de cada carga individual, verde = fuerza neta resultante.
+  if(selectedIdx>=0 && charges[selectedIdx]){
+    let c=charges[selectedIdx];
+    let p=toCanvas(c.x,c.y);
+    let fi=phys[selectedIdx];
+    if(fi){
+      for(let f of fi.forces){
+        let oc=charges[f.j];
+        let op=toCanvas(oc.x,oc.y);
+        let dx=p.cx-op.cx, dy=p.cy-op.cy;
+        let len=Math.sqrt(dx*dx+dy*dy);
+        if(len<1) continue;
+        let logF=Math.min(Math.log10(Math.abs(f.F)+1)*16,75);
+        let nx=dx/len, ny=dy/len;
+        // draw dashed line to source
+        ctx.save();
+        ctx.strokeStyle='rgba(250,192,46,.15)';
+        ctx.lineWidth=0.5;
+        ctx.setLineDash([3,5]);
+        ctx.beginPath();ctx.moveTo(p.cx,p.cy);ctx.lineTo(op.cx,op.cy);ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+        arrow(p.cx,p.cy, p.cx+nx*logF, p.cy+ny*logF, '#FAC02E',2,9);
+      }
+      // Net force
+      if(fi.Fnet>0){
+        let logF=Math.min(Math.log10(fi.Fnet+1)*20,100);
+        let nx=fi.fx/fi.Fnet, ny=-fi.fy/fi.Fnet;
+        arrow(p.cx,p.cy, p.cx+nx*logF, p.cy+ny*logF, '#39D98A',3,12);
+        // Glow line
+        ctx.save();
+        ctx.shadowColor='#39D98A'; ctx.shadowBlur=12;
+        arrow(p.cx,p.cy, p.cx+nx*logF, p.cy+ny*logF, 'rgba(57,217,138,.3)',5,0);
+        ctx.restore();
+      }
+    }
+  }
+
+  // E-field evaluation points
+  for(let i=0;i<ePoints.length;i++){
+    let ep=ePoints[i];
+    let near=charges.some(c=>Math.hypot(c.x-ep.x,c.y-ep.y)<5);
+    let p=toCanvas(ep.x,ep.y);
+    if(!near){
+      let {ex,ey,E}=electricField(ep.x,ep.y);
+      if(E>0){
+        let ang=Math.atan2(ey,ex);
+        let l=28;
+        arrow(p.cx,p.cy, p.cx+Math.cos(ang)*l, p.cy-Math.sin(ang)*l, '#ED6EAC',2.5,11);
+        ctx.save(); ctx.shadowColor='#ED6EAC'; ctx.shadowBlur=10;
+        arrow(p.cx,p.cy, p.cx+Math.cos(ang)*l, p.cy-Math.sin(ang)*l, 'rgba(237,110,172,.2)',6,0);
+        ctx.restore();
+      }
+    }
+    // Dot
+    ctx.save();
+    ctx.shadowColor='#ED6EAC'; ctx.shadowBlur=10;
+    ctx.beginPath(); ctx.arc(p.cx,p.cy,5,0,Math.PI*2);
+    ctx.fillStyle='#ED6EAC'; ctx.fill();
+    ctx.strokeStyle='#4B1528'; ctx.lineWidth=1; ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle='rgba(237,110,172,.8)'; ctx.font='9px Space Mono,monospace';
+    ctx.textAlign='center';
+    ctx.fillText('P'+(i+1),p.cx,p.cy-10);
+  }
+
+  // Charges
+  for(let idx=0;idx<charges.length;idx++){
+    let c=charges[idx];
+    let p=toCanvas(c.x,c.y);
+    let col=qColor(c.q);
+    let pulse=1+0.07*Math.sin(animT*.05+idx*1.7);
+    let r=14+Math.min(Math.abs(c.q)/1e-6*1.2,10);
+
+    ctx.save();
+    ctx.shadowColor=qGlow(c.q); ctx.shadowBlur=30*pulse;
+    ctx.beginPath(); ctx.arc(p.cx,p.cy,r*pulse,0,Math.PI*2);
+    let grd=ctx.createRadialGradient(p.cx-r*.3,p.cy-r*.35,0,p.cx,p.cy,r*pulse);
+    if(c.q>=0){
+      grd.addColorStop(0,'#B5D4F4');
+      grd.addColorStop(.5,'#378CFF');
+      grd.addColorStop(1,'#0C447C');
+    } else {
+      grd.addColorStop(0,'#F7C1C1');
+      grd.addColorStop(.5,'#FF4B4B');
+      grd.addColorStop(1,'#791F1F');
+    }
+    ctx.fillStyle=grd; ctx.fill();
+    ctx.restore();
+
+    // Ring if selected
+    if(idx===selectedIdx){
+      ctx.save();
+      ctx.beginPath(); ctx.arc(p.cx,p.cy,r*pulse+7,0,Math.PI*2);
+      ctx.strokeStyle='rgba(250,192,46,.6)'; ctx.lineWidth=2;
+      ctx.setLineDash([5,4]); ctx.lineDashOffset=-animT*.6;
+      ctx.stroke(); ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    // +/− sign
+    ctx.save();
+    ctx.shadowColor='rgba(0,0,0,.9)'; ctx.shadowBlur=4;
+    ctx.fillStyle='rgba(255,255,255,.95)';
+    ctx.font=`bold ${Math.round(r*.85)}px Orbitron,monospace`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(c.q>=0?'+':'−', p.cx, p.cy+1);
+    ctx.restore();
+
+    // Label
+    ctx.fillStyle='rgba(232,237,245,.8)';
+    ctx.font='bold 11px Orbitron,monospace';
+    ctx.textAlign='center'; ctx.textBaseline='bottom';
+    ctx.fillText(c.label, p.cx, p.cy-r*pulse-5);
+    ctx.fillStyle='rgba(107,122,153,.8)';
+    ctx.font='9px Space Mono,monospace';
+    ctx.fillText(fmtQ(c.q), p.cx, p.cy-r*pulse-17);
+  }
+
+  // Particles
+  if(showParticles){
+    for(let p of particles){
+      ctx.globalAlpha=p.life*.9;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2);
+      ctx.fillStyle=p.col; ctx.fill();
+      p.x+=p.vx; p.y+=p.vy;
+      p.vx*=.94; p.vy*=.94;
+      p.life-=.022;
+    }
+    particles=particles.filter(p=>p.life>0);
+    ctx.globalAlpha=1;
+  }
+
+  ctx.restore();
+
+  // 1D axis guide
+  if(dim===1){
+    let ay=toCanvas(0,0).cy;
+    ctx.save();
+    ctx.strokeStyle='rgba(55,140,255,.15)'; ctx.lineWidth=1.5;
+    ctx.setLineDash([8,4]);
+    ctx.beginPath(); ctx.moveTo(0,ay); ctx.lineTo(W,ay); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  animT++;
+  requestAnimationFrame(draw);
+}
+
+// ── UI RENDERING ──────────────────────────
+function renderUI(){
+  let el=document.getElementById('sidebar-content');
+  if(currentTab==='charges') el.innerHTML=renderChargesTab();
+  else if(currentTab==='results') el.innerHTML=renderResultsTab();
+  else el.innerHTML=renderCampoTab();
+}
+
+function renderChargesTab(){
+  let phys=computePhysics();
+  let html='<div class="sec-label">Sistema de cargas</div>';
+  charges.forEach((c,i)=>{
+    let fi=phys[i];
+    let col=qColor(c.q);
+    html+=`<div class="charge-card${selectedIdx===i?' selected':''}" onclick="selectCharge(${i},event)">
+      <div class="ch-head">
+        <div class="ch-badge ${c.q>=0?'pos':'neg'}">${c.q>=0?'+':'−'}</div>
+        <span class="ch-label">${c.label}</span>
+        <span class="ch-q-val">${fmtQ(c.q)}</span>
+        <button class="del-btn" onclick="removeCharge(${c.id})">×</button>
+      </div>
+      <div class="field-row">
+        <label>q</label>
+        <input type="number" step="0.1" value="${(c.q*1e6).toFixed(2)}" onchange="charges[${i}].q=+this.value*1e-6;renderUI()">
+        <span class="unit">μC</span>
+      </div>
+      <div class="field-row">
+        <label>x</label>
+        <input type="number" step="5" value="${c.x.toFixed(1)}" onchange="charges[${i}].x=+this.value;if(dim===1)charges[${i}].y=0;renderUI()">
+      </div>
+      ${dim===2?`<div class="field-row"><label>y</label><input type="number" step="5" value="${c.y.toFixed(1)}" onchange="charges[${i}].y=+this.value;renderUI()"></div>`:''}
+      ${fi?`<div style="font-family:'Space Mono',monospace;font-size:9px;color:#6B7A99;margin-top:4px">|F| = ${fmtFabs(fi.Fnet)}</div>`:''}
+    </div>`;
+  });
+  html+=`<button class="sidebar-add-btn" onclick="addCharge()">＋ AGREGAR CARGA</button>`;
+
+  html+=`<div class="sec-label">Carga seleccionada</div>`;
+  html+=`<select onchange="selectedIdx=+this.value;renderUI()">
+    <option value="-1">— seleccionar —</option>
+    ${charges.map((c,i)=>`<option value="${i}" ${selectedIdx===i?'selected':''}>${c.label} (${fmtQ(c.q)})</option>`).join('')}
+  </select>`;
+
+  if(selectedIdx>=0 && charges[selectedIdx]){
+    let fi=phys[selectedIdx];
+    let c=charges[selectedIdx];
+    if(fi){
+      html+=`<div class="result-card" style="margin-top:8px">
+        <div class="result-row"><span class="rl">Carga</span><span class="rv ${c.q>=0?'pos':'neg'}">${fmtQ(c.q)}</span></div>
+        <div class="result-row"><span class="rl">Posición</span><span class="rv">(${c.x.toFixed(1)}, ${c.y.toFixed(1)})</span></div>
+        <div class="result-row"><span class="rl">|F neta|</span><span class="rv net">${fmtFabs(fi.Fnet)}</span></div>
+        <div class="result-row"><span class="rl">Fx</span><span class="rv">${fmtF(fi.fx)}</span></div>
+        <div class="result-row"><span class="rl">Fy</span><span class="rv">${fmtF(fi.fy)}</span></div>
+        ${dim===2?`<div class="result-row"><span class="rl">Ángulo θ</span><span class="rv">${fi.angle.toFixed(2)}°</span></div>`:''}
+      </div>`;
+    }
+  }
+  return html;
+}
+
+function renderResultsTab(){
+  let phys=computePhysics();
+  if(selectedIdx<0||!charges[selectedIdx]){
+    return '<div class="empty-hint">Selecciona una carga<br>en la pestaña CARGAS</div>';
+  }
+  let c=charges[selectedIdx];
+  let fi=phys[selectedIdx];
+  let html='';
+
+  html+=`<div class="sec-label">Fuerzas sobre ${c.label}</div>`;
+  if(fi.forces.length===0){
+    html+='<div class="empty-hint">Solo hay 1 carga.<br>Agrega más para calcular.</div>';
+  }
+  for(let f of fi.forces){
+    let oc=charges[f.j];
+    let tipo=c.q*oc.q>0?'REPULSIÓN ⟵⟶':'ATRACCIÓN ⟶⟵';
+    let tcol=c.q*oc.q>0?'#FF4B4B':'#39D98A';
+    html+=`<div class="result-card">
+      <div style="font-family:'Orbitron',monospace;font-size:10px;color:${tcol};margin-bottom:6px">${oc.label} → ${tipo}</div>
+      <div class="result-row"><span class="rl">|F|</span><span class="rv" style="color:#FAC02E">${fmtFabs(f.F)}</span></div>
+      <div class="result-row"><span class="rl">Fx</span><span class="rv">${fmtF(f.fx)}</span></div>
+      <div class="result-row"><span class="rl">Fy</span><span class="rv">${fmtF(f.fy)}</span></div>
+      <div class="result-row"><span class="rl">Distancia</span><span class="rv">${f.rM.toFixed(3)} m</span></div>
+      <div style="font-size:9px;color:#3A4560;font-family:'Space Mono',monospace;margin-top:4px">
+        F = k·|q₁·q₂|/r² = 8.99×10⁹·${Math.abs(c.q*1e6).toFixed(2)}×${Math.abs(oc.q*1e6).toFixed(2)}×10⁻¹²/${(f.rM).toFixed(3)}²
+      </div>
+    </div>`;
+  }
+
+  html+=`<div class="sec-label">Fuerza neta (superposición)</div>`;
+  html+=`<div class="result-card">
+    <div class="result-row"><span class="rl">Fx neta</span><span class="rv">${fmtF(fi.fx)}</span></div>
+    <div class="result-row"><span class="rl">Fy neta</span><span class="rv">${fmtF(fi.fy)}</span></div>
+    <div class="result-row"><span class="rl">|F neta|</span><span class="rv net">${fmtFabs(fi.Fnet)}</span></div>
+    ${dim===2?`<div class="result-row"><span class="rl">Dirección θ</span><span class="rv net">${fi.angle.toFixed(2)}°</span></div>`:''}
+    ${dim===1?`<div class="result-row"><span class="rl">Dirección</span><span class="rv net">${fi.fx>0?'→ derecha':'← izquierda'}</span></div>`:''}
+  </div>`;
+  return html;
+}
+
+function renderCampoTab(){
+  let html='<div class="sec-label">Puntos de evaluación del campo E</div>';
+  ePoints.forEach((ep,i)=>{
+    html+=`<div class="ep-row">
+      <div class="ep-dot"></div>
+      <span style="font-family:'Orbitron',monospace;font-size:9px;color:#ED6EAC;min-width:22px">P${i+1}</span>
+      <input type="number" step="5" value="${ep.x.toFixed(0)}" onchange="ePoints[${i}].x=+this.value;renderUI()" title="x">
+      ${dim===2?`<input type="number" step="5" value="${ep.y.toFixed(0)}" onchange="ePoints[${i}].y=+this.value;renderUI()" title="y">`:''}
+      <button class="ep-del" onclick="removeEPoint(${i})">×</button>
+    </div>`;
+  });
+  html+=`<button class="sidebar-add-btn" style="border-color:rgba(237,110,172,.3);color:#ED6EAC;background:rgba(237,110,172,.04)" onclick="addEPoint()">＋ PUNTO</button>`;
+
+  html+=`<div class="sec-label">Campo eléctrico en puntos</div>`;
+  ePoints.forEach((ep,i)=>{
+    let near=charges.some(c=>Math.hypot(c.x-ep.x,c.y-ep.y)<5);
+    if(near){
+      html+=`<div class="warn">⚠ P${i+1}: punto sobre una carga — campo no definido.</div>`;
+      return;
+    }
+    let {ex,ey,E}=electricField(ep.x,ep.y);
+    html+=`<div class="result-card">
+      <div style="font-family:'Orbitron',monospace;font-size:10px;color:#ED6EAC;margin-bottom:6px">PUNTO P${i+1} (${ep.x.toFixed(0)}, ${ep.y.toFixed(0)})</div>
+      <div class="result-row"><span class="rl">|E|</span><span class="rv field">${fmtEabs(E)}</span></div>
+      <div class="result-row"><span class="rl">Ex</span><span class="rv">${fmtE(ex)}</span></div>
+      <div class="result-row"><span class="rl">Ey</span><span class="rv">${fmtE(ey)}</span></div>
+      ${dim===2?`<div class="result-row"><span class="rl">θ</span><span class="rv">${(Math.atan2(ey,ex)*180/Math.PI).toFixed(1)}°</span></div>`:''}
+      <div style="font-size:9px;color:#3A4560;font-family:'Space Mono',monospace;margin-top:4px">
+        E = k·|q|/r² &nbsp;|&nbsp; F = q·E
+      </div>
+    </div>`;
+  });
+  return html;
+}
+
+// ── ACTIONS ───────────────────────────────
+function setDim(d){
+  dim=d;
+  document.getElementById('btn1d').classList.toggle('active',d===1);
+  document.getElementById('btn2d').classList.toggle('active',d===2);
+  if(d===1) charges.forEach(c=>c.y=0);
+  renderUI();
+}
+function toggleField(){
+  showField=!showField;
+  document.getElementById('btnField').classList.toggle('on',showField);
+}
+function toggleLines(){
+  showLines=!showLines;
+  document.getElementById('btnLines').classList.toggle('on',showLines);
+}
+function toggleParticles(){
+  showParticles=!showParticles;
+  document.getElementById('btnPart').classList.toggle('on',showParticles);
+}
+function resetAll(){
+  charges=[
+    {id:0,q:2e-6,  x:0,   y:0,   label:'q₁'},
+    {id:1,q:-3e-6, x:200, y:80,  label:'q₂'},
+    {id:2,q:1.5e-6,x:-150,y:120, label:'q₃'},
+  ];
+  ePoints=[{x:100,y:0},{x:0,y:150},{x:-100,y:50}];
+  idCounter=3; selectedIdx=-1; scale=SCALE0; panX=0; panY=0;
+  renderUI();
+}
+function addCharge(){
+  let id=idCounter++, n=charges.length+1;
+  charges.push({id,q:1e-6,x:(Math.random()-.5)*300,y:dim===1?0:(Math.random()-.5)*200,label:'q'+subscript(n)});
+  selectedIdx=charges.length-1;
+  renderUI();
+  let c=charges[selectedIdx];
+  let p=toCanvas(c.x,c.y);
+  spawnParticles(p.cx,p.cy,'#378CFF',16);
+}
+function removeCharge(id){
+  charges=charges.filter(c=>c.id!==id);
+  if(selectedIdx>=charges.length) selectedIdx=charges.length-1;
+  renderUI();
+}
+function selectCharge(i,e){
+  if(e && e.target.tagName==='INPUT') return;
+  selectedIdx=i; renderUI();
+}
+function addEPoint(){
+  ePoints.push({x:(Math.random()-.5)*300,y:(Math.random()-.5)*200});
+  renderUI();
+}
+function removeEPoint(i){ePoints.splice(i,1);renderUI();}
+
+function showTab(t){
+  currentTab=t;
+  document.querySelectorAll('.tab').forEach((b,i)=>{
+    b.classList.toggle('active',['charges','results','campo'][i]===t);
+  });
+  renderUI();
+}
+
+// ── CANVAS INTERACTIONS ───────────────────
+function resize(){
+  let r=wrap.getBoundingClientRect();
+  cv.width=r.width; cv.height=r.height||500;
+}
+
+// Doble clic en el canvas: agrega una nueva carga en esa posición del mundo
+cv.addEventListener('dblclick',function(e){
+  let r=cv.getBoundingClientRect();
+  let wp=fromCanvas(e.clientX-r.left,e.clientY-r.top);
+  let id=idCounter++, n=charges.length+1;
+  charges.push({id,q:1e-6,x:wp.x,y:dim===1?0:wp.y,label:'q'+subscript(n)});
+  selectedIdx=charges.length-1;
+  spawnParticles(e.clientX-r.left,e.clientY-r.top,'#378CFF',20);
+  renderUI();
+});
+
+// Clic en el canvas: si cae sobre una carga (radio 22px) inicia su arrastre,
+// de lo contrario inicia el paneo del viewport.
+cv.addEventListener('mousedown',function(e){
+  if(e.button!==0) return;
+  let r=cv.getBoundingClientRect();
+  let mx=e.clientX-r.left, my=e.clientY-r.top;
+  for(let i=0;i<charges.length;i++){
+    let p=toCanvas(charges[i].x,charges[i].y);
+    if(Math.hypot(mx-p.cx,my-p.cy)<22){
+      dragging=i; dragOffX=p.cx-mx; dragOffY=p.cy-my;
+      selectedIdx=i; renderUI();
+      cv.style.cursor='grabbing';
+      return;
+    }
+  }
+  // pan
+  dragging='pan';
+  dragOffX=mx; dragOffY=my;
+});
+
+cv.addEventListener('mousemove',function(e){
+  let r=cv.getBoundingClientRect();
+  let mx=e.clientX-r.left, my=e.clientY-r.top;
+  let wp=fromCanvas(mx,my);
+  document.getElementById('coord-display').textContent=`x: ${wp.x.toFixed(1)} | y: ${wp.y.toFixed(1)}`;
+
+  if(dragging==='pan'){
+    panX+=mx-dragOffX; panY+=my-dragOffY;
+    dragOffX=mx; dragOffY=my; return;
+  }
+  if(typeof dragging==='number'){
+    let wp2=fromCanvas(mx+dragOffX,my+dragOffY);
+    charges[dragging].x=wp2.x;
+    charges[dragging].y=dim===1?0:wp2.y;
+    spawnParticles(mx,my,qColor(charges[dragging].q),2);
+    renderUI(); return;
+  }
+
+  // Tooltip
+  let tt=document.getElementById('tooltip');
+  let phys=computePhysics();
+  for(let i=0;i<charges.length;i++){
+    let p=toCanvas(charges[i].x,charges[i].y);
+    if(Math.hypot(mx-p.cx,my-p.cy)<22){
+      let fi=phys[i];
+      document.getElementById('tt-name').textContent=charges[i].label;
+      document.getElementById('tt-q').textContent=fmtQ(charges[i].q);
+      document.getElementById('tt-pos').textContent=`(${charges[i].x.toFixed(1)}, ${charges[i].y.toFixed(1)})`;
+      document.getElementById('tt-f').textContent=fi?fmtFabs(fi.Fnet):'N/A';
+      let tx=Math.min(p.cx+20,r.width-180), ty=Math.max(p.cy-60,10);
+      tt.style.left=tx+'px'; tt.style.top=ty+'px'; tt.style.display='block';
+      cv.style.cursor='grab';
+      return;
+    }
+  }
+  tt.style.display='none';
+  cv.style.cursor=dragging?'grabbing':'crosshair';
+});
+
+cv.addEventListener('mouseup',function(e){
+  if(typeof dragging==='number'){
+    let c=charges[dragging];
+    let p=toCanvas(c.x,c.y);
+    spawnParticles(p.cx,p.cy,qColor(c.q),14);
+  }
+  dragging=null; cv.style.cursor='crosshair';
+});
+cv.addEventListener('mouseleave',function(){
+  dragging=null;
+  document.getElementById('tooltip').style.display='none';
+});
+
+// Zoom con la rueda del mouse, centrado en la posición del cursor.
+// Se recalcula panX/panY para que el punto bajo el cursor no se desplace.
+cv.addEventListener('wheel',function(e){
+  e.preventDefault();
+  let factor=e.deltaY<0?1.1:.9;
+  let r=cv.getBoundingClientRect();
+  let mx=e.clientX-r.left, my=e.clientY-r.top;
+  let wx=(mx-cv.width/2-panX)/scale;
+  let wy=-(my-cv.height/2-panY)/scale;
+  scale*=factor;
+  scale=Math.max(.3,Math.min(8,scale));
+  panX=mx-cv.width/2-wx*scale;
+  panY=my-cv.height/2+wy*scale;
+},{passive:false});
+
+window.addEventListener('resize',()=>{resize();});
+resize();
+renderUI();
+draw();
+</script>
+</body>
+</html>
